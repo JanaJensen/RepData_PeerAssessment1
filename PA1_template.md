@@ -1,9 +1,8 @@
 Patterns in data from a personal activity monitoring device
 ========================================================
 
-```{r setopts, echo=FALSE}
-opts_chunk$set(tidy=FALSE)
-```
+
+
 ------
 Class:      [Coursera - Reproducible Research](https://class.coursera.org/repdata-002)  
 Assignment: Programming Assignment 1  
@@ -49,7 +48,8 @@ The dataset consists of 17,568 observations stored in a comma-separated-value
 
 Set the environment, get data, and take a look at what we got: 
 
-```{r getdata}
+
+```r
 # prep environment
 library(plyr)      # ddply, summarise, join
 library(lattice)   # xyplot
@@ -65,19 +65,41 @@ fullData <- read.csv(textfile)
 
 # take a look at what we've got
 str(fullData)
+```
+
+```
+## 'data.frame':	17568 obs. of  3 variables:
+##  $ steps   : int  NA NA NA NA NA NA NA NA NA NA ...
+##  $ date    : Factor w/ 61 levels "2012-10-01","2012-10-02",..: 1 1 1 1 1 1 1 1 1 1 ...
+##  $ interval: int  0 5 10 15 20 25 30 35 40 45 ...
+```
+
+```r
 summary(fullData)
 ```
 
+```
+##      steps               date          interval   
+##  Min.   :  0.0   2012-10-01:  288   Min.   :   0  
+##  1st Qu.:  0.0   2012-10-02:  288   1st Qu.: 589  
+##  Median :  0.0   2012-10-03:  288   Median :1178  
+##  Mean   : 37.4   2012-10-04:  288   Mean   :1178  
+##  3rd Qu.: 12.0   2012-10-05:  288   3rd Qu.:1766  
+##  Max.   :806.0   2012-10-06:  288   Max.   :2355  
+##  NA's   :2304    (Other)   :15840
+```
+
+
 So we have:
-* steps are a continuous `r class(fullData$steps)` variable ranging from
-`r min(fullData[which(fullData$steps>=0),"steps"])` to
-`r max(fullData[which(fullData$steps>=0),"steps"])` with a median of
-`r median(fullData[which(fullData$steps>=0),"steps"])` (i.e. most intervals
-have no activity) and `r sum(is.na(fullData$steps))` missing values
-* date is a `r class(fullData$date)` with `r length(unique(fullData$date))`
+* steps are a continuous integer variable ranging from
+0 to
+806 with a median of
+0 (i.e. most intervals
+have no activity) and 2304 missing values
+* date is a factor with 61
 values ranging from "2012-10-01" to "2012-11-30"
-* interval is a discrete variable with `r length(unique(fullData$interval))`
-values from `r min(fullData$interval)` to `r max(fullData$interval)`
+* interval is a discrete variable with 288
+values from 0 to 2355
 
 All as expected from the description provided. Now we can look at what the data
 tell us.
@@ -86,7 +108,8 @@ tell us.
 
 To explore this question, we need to aggregate the data to the date level.
 
-```{r firsthist}
+
+```r
 # aggregate the data and calculate values of interest
 dayData <- ddply(fullData[which(fullData$steps>=0),],  # non-missing values
                  "date", # aggregation field
@@ -106,6 +129,9 @@ abline(v=dayMean,lwd=1, col="red")
 text(dayMean+3300, 27, labels=paste("mean=",dayMean), col="red")
 ```
 
+![plot of chunk firsthist](figure/firsthist.png) 
+
+
 We can see the mean and median are almost identical if we disregard the missing
 values.
 
@@ -114,7 +140,8 @@ values.
 A more interesting question, to see the pattern of activity for an "average"
 day, we need to aggregate the data to the interval level.
 
-```{r firstplot}
+
+```r
 # aggregate the data and calculate values of interest
 intervalData <- ddply(fullData[which(fullData$steps>=0),],  # non-missing values
                       "interval", # aggregation field
@@ -137,6 +164,9 @@ text(maxInterval+800,intervalMax-20,col="red",
                   in interval ",maxInterval))
 ```
 
+![plot of chunk firstplot](figure/firstplot.png) 
+
+
 Overall, our subject walks more in the morning and is moderately active
 throughout the day, again disregarding missing values.
 
@@ -147,10 +177,16 @@ missing values. The presence of missing days may introduce bias into
 some calculations or summaries of the data.
 
 #### 1. How many missing values?
-```{r missingval}
+
+```r
 paste(sum(is.na(fullData$steps))," out of ",nrow(fullData),
       " rows have missing step counts")
 ```
+
+```
+## [1] "2304  out of  17568  rows have missing step counts"
+```
+
 
 #### 2. What might be a reasonable way to fill them in?
 Many people have an overall weekly pattern to their activity. We can fill
@@ -158,7 +194,8 @@ in the missing values with the mean for that interval across that day of
 week.
 
 #### 3. Create a filled-in dataset
-```{r fillval}
+
+```r
 fullData$dow <- as.factor(strftime(fullData$date,'%a')) # add DOW for means
 impute.mean <- function(x) replace(x, is.na(x), round(mean(x, na.rm = TRUE),0))
 filledData <- ddply(fullData, .(interval,dow),
@@ -166,8 +203,10 @@ filledData <- ddply(fullData, .(interval,dow),
                     steps = impute.mean(steps))
 ```
 
+
 #### 4. How does the distribution differ with the imputed means?
-```{r secondhist, fig.width=12}
+
+```r
 # same aggregation as before, but with the new data
 dayData2 <- ddply(filledData,  # missing values filled in
                   "date", # aggregation field
@@ -198,6 +237,9 @@ abline(v=dayMean,lwd=1, col="red")
 text(dayMean+3500, 27, labels=paste("mean=",dayMean), col="red")
 ```
 
+![plot of chunk secondhist](figure/secondhist.png) 
+
+
 They are not the same, but any bias in this view from missing values doesn't
 appear to be very significant. 
 
@@ -207,7 +249,8 @@ Many people have different patterns during the work day than on weekends.
 
 #### 1. Identify "weekend" versus "weekday"
 
-```{r wkpart}
+
+```r
 filledData$wkp <- as.factor(ifelse(filledData$dow=="Sat"|filledData$dow=="Sun","weekend","weekday"))
 intervalData2 <- ddply(filledData,
                       .(interval,wkp), # aggregation fields
@@ -217,8 +260,10 @@ intervalMax3 <- max(intervalData2$avgSteps)
 maxInterval3 <- intervalData2[intervalData2$avgSteps==intervalMax3,"interval"]
 ```
 
+
 #### 2. Compare the two time series
-```{r wkpplot}
+
+```r
 with(intervalData2,xyplot(avgSteps ~ interval | wkp,
                           type='l',
                           layout=c(1,2),
@@ -228,13 +273,17 @@ with(intervalData2,xyplot(avgSteps ~ interval | wkp,
                           sub="(missing values filled with average for day of week and interval)"))
 ```
 
+![plot of chunk wkpplot](figure/wkpplot.png) 
+
+
 We see a clear pattern of morning, noon, mid-afternoon, and early evening spikes
 during the week whereas weekend activity appears more uniformly distributed.
 Because there are more weekdays, the weekday pattern dominates the overall
 "average" day metrics.
 
 ### Clean up memory and disk
-```{r cleanup}
+
+```r
 unlink(textfile)
 rm(fullData,filledData,
    dayData,dayMean,dayMedian,
@@ -244,6 +293,7 @@ rm(fullData,filledData,
    fileUrl,textfile,zipfile,
    impute.mean)
 ```
+
 
 ## Conclusion
 
